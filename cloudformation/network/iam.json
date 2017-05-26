@@ -37,7 +37,9 @@
               "Sid": "AssociateDisassociateVPCFromHostedZone",
               "Action": [
                 "lambda:*",
-                "logs:*","s3:*",
+                "logs:*",
+                "s3:*",
+                "rds:Describe*",
                 "iam:PassRole",
                 "ec2:DescribeVpcs",
                 "route53:AssociateVPCWithHostedZone",

@@ -1,0 +1,170 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Aurora RDS cluster",
+    "Parameters": {
+        "InternalDomain": {
+            "Description": "The internal domain name.",
+            "Type": "String"
+        },
+        "HostedZoneId": {
+            "Description": "The internal dns zone ID.",
+            "Type": "AWS::Route53::HostedZone::Id"
+        },
+        "VpcId": {
+            "Description": "VPC ID",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "SubnetIds": {
+            "Description": "Subnet ID list",
+            "Type": "List<AWS::EC2::Subnet::Id>"
+        },
+        "RDSReaderEndpoint": {
+            "Description": "Labmda ARN for getting reader endpoint",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "DatabaseSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Extend CFN Demo DB Security Group",
+                "VpcId": {
+                    "Ref": "VpcId"
+                }
+            }
+        },
+        "DBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": "DB Subnet groups",
+                "SubnetIds": {
+                    "Ref": "SubnetIds"
+                }
+            }
+        },
+        "PrimaryDBCluster": {
+            "Type": "AWS::RDS::DBCluster",
+            "Properties": {
+                "DatabaseName": "extendDemo",
+                "Engine": "aurora",
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                },
+                "MasterUsername": "extendDemo",
+                "MasterUserPassword": "change-me",
+                "VpcSecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "DatabaseSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ]
+            },
+            "DeletionPolicy": "Snapshot"
+        },
+        "PrimaryDB1": {
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "DBClusterIdentifier": {
+                    "Ref": "PrimaryDBCluster"
+                },
+                "DBInstanceClass": "db.t2.small",
+                "Engine": "aurora",
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                }
+            }
+        },
+        "PrimaryDB2": {
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "DBClusterIdentifier": {
+                    "Ref": "PrimaryDBCluster"
+                },
+                "DBInstanceClass": "db.t2.small",
+                "Engine": "aurora",
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                }
+            }
+        },
+        "PrimaryDBDNS": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "mysql.",
+                            {
+                                "Ref": "InternalDomain"
+                            }
+                        ]
+                    ]
+                },
+                "HostedZoneId": {
+                    "Ref": "HostedZoneId"
+                },
+                "Type": "CNAME",
+                "TTL": "900",
+                "ResourceRecords": [
+                    {
+                        "Fn::GetAtt": [
+                            "PrimaryDBCluster",
+                            "Endpoint.Address"
+                        ]
+                    }
+                ]
+            }
+        },
+        "PrimaryDBReadOnlyDNSLambda": {
+            "Type": "Custom::PrimaryDBReadOnlyDNSLambda",
+            "Properties": {
+                "ServiceToken": { "Ref": "RDSReaderEndpoint" },
+                "DBClusterIdentifier": { "Ref": "PrimaryDBCluster"}
+            },
+            "DependsOn": ["PrimaryDBCluster", "PrimaryDB1", "PrimaryDB2"]
+        },
+        "PrimaryDBReadOnlyDNS": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "mysql-ro.",
+                            {
+                                "Ref": "InternalDomain"
+                            }
+                        ]
+                    ]
+                },
+                "HostedZoneId": {
+                    "Ref": "HostedZoneId"
+                },
+                "Type": "CNAME",
+                "TTL": "900",
+                "ResourceRecords": [
+                    {
+                        "Fn::GetAtt": [
+                            "PrimaryDBReadOnlyDNSLambda",
+                            "ReaderEndpoint"
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "DatabaseSecurityGroup": {
+            "Description": "Security group for Database. Use with DBSecurityGroupIngress for access.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "DatabaseSecurityGroup",
+                    "GroupId"
+                ]
+            }
+        }
+    }
+}

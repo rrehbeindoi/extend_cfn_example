@@ -63,32 +63,6 @@
             },
             "DeletionPolicy": "Snapshot"
         },
-        "PrimaryDB1": {
-            "Type": "AWS::RDS::DBInstance",
-            "Properties": {
-                "DBClusterIdentifier": {
-                    "Ref": "PrimaryDBCluster"
-                },
-                "DBInstanceClass": "db.t2.small",
-                "Engine": "aurora",
-                "DBSubnetGroupName": {
-                    "Ref": "DBSubnetGroup"
-                }
-            }
-        },
-        "PrimaryDB2": {
-            "Type": "AWS::RDS::DBInstance",
-            "Properties": {
-                "DBClusterIdentifier": {
-                    "Ref": "PrimaryDBCluster"
-                },
-                "DBInstanceClass": "db.t2.small",
-                "Engine": "aurora",
-                "DBSubnetGroupName": {
-                    "Ref": "DBSubnetGroup"
-                }
-            }
-        },
         "PrimaryDBDNS": {
             "Type": "AWS::Route53::RecordSet",
             "Properties": {
@@ -123,8 +97,7 @@
             "Properties": {
                 "ServiceToken": { "Ref": "RDSReaderEndpoint" },
                 "DBClusterIdentifier": { "Ref": "PrimaryDBCluster"}
-            },
-            "DependsOn": ["PrimaryDBCluster", "PrimaryDB1", "PrimaryDB2"]
+            }
         },
         "PrimaryDBReadOnlyDNS": {
             "Type": "AWS::Route53::RecordSet",
